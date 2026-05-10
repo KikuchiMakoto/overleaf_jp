@@ -1,9 +1,6 @@
 services:
   sharelatex:
     restart: always
-    # Server Pro users:
-    # image: quay.io/sharelatex/sharelatex-pro
-    # image: sharelatex/sharelatex:latest
     build:
       context: ./
       dockerfile: Dockerfile
@@ -20,13 +17,6 @@ services:
       - /tmp:rw,noexec,nosuid,size=1g
     volumes:
       - ./sharelatex_data:/var/lib/overleaf
-      - texmf-var:/var/lib/overleaf/tmp/texmf-var
-      - fontconfig-cache:/var/cache/fontconfig
-      ########################################################################
-      ####  Server Pro: Uncomment the following line to mount the docker  ####
-      ####             socket, required for Sibling Containers to work    ####
-      ########################################################################
-      # - /var/run/docker.sock:/var/run/docker.sock
     environment:
       OVERLEAF_APP_NAME: Overleaf Community Edition
       COMPILE_TIMEOUT: 300
@@ -85,7 +75,3 @@ services:
     container_name: redis
     volumes:
       - ./redis_data:/data
-
-volumes:
-  texmf-var:
-  fontconfig-cache:
