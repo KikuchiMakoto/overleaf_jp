@@ -83,7 +83,6 @@ RUN tlmgr install \
         diffcoeff \
         physics2 \
         mleftright \
-        upgreek \
         tcolorbox \
         booktabs \
         float \
