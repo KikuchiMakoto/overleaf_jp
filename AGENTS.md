@@ -107,12 +107,12 @@ RUN tlmgr install \
 3. `tlmgr install ...`（日本語パッケージ群）
 4. `mktexlsr`（kpathsea の `ls-R` データベースを再構築し、パッケージ検索のディスク走査を排除）
 5. `fmtutil-sys --byfmt ...`（**`--all` は避ける**。必要なエンジンのみ選択生成：`lualatex`, `luahblatex`, `xelatex` 等）
-6. `fc-cache -fv`（fontconfig キャッシュ再構築）
-7. `luaotfload-tool --update --force --prefer-texmf`（LuaLaTeX フォントローダキャッシュ生成。`--prefer-texmf` でシステムフォント走査を抑制し高速化）
+
+**注意**: ビルド時の `fc-cache` や `luaotfload-tool` によるフォントキャッシュの事前生成は推奨しない。コンテナ環境では事前生成したキャッシュが逆にフォント解決の誤動作を引き起こすことがある。フォントキャッシュはランタイム初回に必要に応じて自動生成されることを前提とする。
 
 ### 4. 日本語化に関する指針
 - **Locale/Timezone**: `ENV TZ=Asia/Tokyo`, `ENV DEBIAN_FRONTEND=noninteractive` は維持する
-- **フォントキャッシュ**: XeLaTeX/LuaLaTeX の初回起動タイムアウトを防ぐため、ビルド時に `fc-cache` と `luaotfload-tool` を実行する習慣を維持する
+- **フォントキャッシュ**: ビルド時や永続化によるフォントキャッシュの事前生成は推奨しない。コンテナ環境では事前生成したキャッシュがフォント解決の誤動作（シェイプ未定義等）を引き起こすことがある。フォントキャッシュはランタイムで必要に応じて自動生成されることを前提とする。問題発生時はキャッシュの削除を優先して検討する
 - **CJK フォント**: システムフォントとして Noto CJK と IPAex を両方入れる。片方だけだと特定のエンジンや設定で文字化けリスクが増える
 - **パッケージ選定**: 日本語組版で頻出する `luatexja`, `jlreq`, `bxjscls` は必須扱いとし、追加パッケージはオプショナル層に分離する
 
@@ -138,22 +138,8 @@ services:
       - /tmp:rw,noexec,nosuid,size=1g
 ```
 
-### キャッシュ永続化（named volume）
-コンテナ再起動時にフォントキャッシュが消失しないよう、以下をnamed volume化する。
-
-```yaml
-services:
-  sharelatex:
-    volumes:
-      - texmf-var:/var/lib/overleaf/tmp/texmf-var       # LuaLaTeX キャッシュ
-      - fontconfig-cache:/var/cache/fontconfig          # XeLaTeX キャッシュ
-volumes:
-  texmf-var:
-  fontconfig-cache:
-```
-
 ### コンパイルタイムアウト緩和
-Overleaf CE のデフォルトは 180 秒。初回フォントキャッシュ生成時のタイムアウトを避けるため、必要に応じて延長する。
+Overleaf CE のデフォルトは 180 秒。大規模な日本語文書や複雑なパッケージを使用する場合、デフォルトでは不足することがあるため、必要に応じて延長する。
 
 ```yaml
 environment:
@@ -168,8 +154,8 @@ environment:
 **対策**:
 1. `luatexja-preset` を使う場合は **手動の `\setmainjfont` を削除**し、プリセットに統一する
 2. `mktexlsr` を実行して `ls-R` データベースを最新化する
-3. `luaotfload-tool --update --force` でキャッシュを再構築する
-4. 必要に応じて `\usepackage{luatexja-otf}` を `luatexja-preset` の**前**に読み込む
+3. 必要に応じて `\usepackage{luatexja-otf}` を `luatexja-preset` の**前**に読み込む
+4. フォントキャッシュの不整合が疑われる場合は、**キャッシュを削除して再生成させる**（`rm -rf /var/lib/overleaf/tmp/texmf-var/luatex-cache/*` 等）
 
 ### `Package luatexja-fontspec Warning: \addjfontfeature(s) ignored`
 **原因**: `luatexja-fontspec` で選択したフォント以外に対して和文フォント機能を適用しようとしている。`luatexja-preset` [deluxe] 使用時に通常発生する警告で、**コンパイル自体は成功する**場合が多い。

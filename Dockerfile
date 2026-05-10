@@ -114,17 +114,6 @@ RUN mktexlsr \
     || (echo "[WARN] Some fmtutil-sys steps failed, continuing..." && true)
 
 # ---------------------------------------------------------------------------
-# 層G: フォントキャッシュ構築（ランタイム初回起動のタイムアウト対策）
-#
-#   - fc-cache:        XeLaTeX / fontconfig 用システムフォントキャッシュ
-#   - luaotfload-tool: LuaLaTeX 用 OpenType フォントキャッシュ
-#                      --prefer-texmf でシステムフォント走査を抑制し高速化
-# ---------------------------------------------------------------------------
-RUN fc-cache -fv \
-    && luaotfload-tool --update --force --prefer-texmf \
-    || echo "[WARN] Font cache generation had issues, will regenerate on first run"
-
-# ---------------------------------------------------------------------------
 # 最終クリーンアップ
 # ---------------------------------------------------------------------------
 RUN rm -rf /tmp/*
