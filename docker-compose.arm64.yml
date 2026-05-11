@@ -1,0 +1,78 @@
+services:
+  sharelatex:
+    restart: always
+    # arm64 ネイティブ自前ビルド用
+    build:
+      context: ./
+      dockerfile: Dockerfile.arm64
+    container_name: sharelatex
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - 80:80
+    stop_grace_period: 60s
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+    volumes:
+      - ./sharelatex_data:/var/lib/overleaf
+    environment:
+      OVERLEAF_APP_NAME: Overleaf Community Edition
+      COMPILE_TIMEOUT: 300
+
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex
+
+      # Same property, unfortunately with different names in
+      # different locations
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+
+      ENABLED_LINKED_FILE_TYPES: "project_file,project_output_file"
+
+      # Enables Thumbnail generation using ImageMagick
+      ENABLE_CONVERSIONS: "true"
+
+      # Disables email confirmation requirement
+      EMAIL_CONFIRMATION_DISABLED: "true"
+
+      ## Set for SSL via nginx-proxy
+      #VIRTUAL_HOST: 103.112.212.22
+
+      OVERLEAF_SITE_URL: https://tex.kmakoto.stream
+      # OVERLEAF_NAV_TITLE: Overleaf Community Edition
+      # OVERLEAF_HEADER_IMAGE_URL: http://example.com/mylogo.png
+      # OVERLEAF_ADMIN_EMAIL: support@it.com
+
+      # OVERLEAF_LEFT_FOOTER: '[{"text": "Another page I want to link to can be found <a href=\"here\">here</a>"} ]'
+      # OVERLEAF_RIGHT_FOOTER: '[{"text": "Hello I am on the Right"} ]'
+
+      # OVERLEAF_EMAIL_FROM_ADDRESS: "hello@example.com"
+
+  mongo:
+    restart: always
+    image: mongo:latest
+    container_name: mongo
+    command: "--replSet overleaf"
+    volumes:
+      - ./mongo_data:/data/db
+      - ./overleaf/bin/shared/mongodb-init-replica-set.js:/docker-entrypoint-initdb.d/mongodb-init-replica-set.js
+    environment:
+      MONGO_INITDB_DATABASE: sharelatex
+    extra_hosts:
+      # Required when using the automatic database setup for initializing the replica set.
+      # This override is not needed when running the setup after starting up mongo.
+      - mongo:127.0.0.1
+    healthcheck:
+      test: echo 'db.stats().ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    restart: always
+    image: valkey/valkey:latest
+    container_name: redis
+    volumes:
+      - ./redis_data:/data
